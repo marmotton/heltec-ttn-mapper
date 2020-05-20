@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "config.h"
+#include <heltec.h>
 
 // LoRa
 #include <lmic.h>
@@ -73,6 +74,17 @@ void setup() {
     // GPS serial port
     Serial1.begin(GPS_BAUDRATE, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
 
+    // Display
+    Heltec.begin(true /*DisplayEnable*/, false /*LoRa*/, false /*Serial*/, false /*PABOOST*/, 866.7E6 /*long BAND*/);
+    Heltec.display->init();
+    Heltec.display->flipScreenVertically();
+    Heltec.display->clear();
+    Heltec.display->setFont(ArialMT_Plain_16);
+    Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+    Heltec.display->drawString(0, 0, "TTN mapper");
+    Heltec.display->drawString(0, 16, "starting...");
+    Heltec.display->display();
+
     // LMIC init
     os_init();
 
@@ -108,6 +120,7 @@ void setup() {
 
 
 unsigned long last_lora_update = 0;
+unsigned int lora_msg_counter = 0;
 
 void loop() {
     while (Serial1.available() > 0 ){
@@ -132,7 +145,22 @@ void loop() {
         if (millis() - last_lora_update > LORA_MSG_INTERVAL_S * 1000) {
             sendLoRa();
             last_lora_update = millis();
+            lora_msg_counter++;
         }
+
+        // Update display
+        Heltec.display->clear();
+        Heltec.display->setFont(ArialMT_Plain_16);
+        Heltec.display->setTextAlignment(TEXT_ALIGN_LEFT);
+        Heltec.display->drawString(0, 0, "Lat");
+        Heltec.display->drawString(36, 0, String(gps.location.lat(), 6) );
+        Heltec.display->drawString(0, 16, "Lon");
+        Heltec.display->drawString(36, 16, String(gps.location.lng(), 6) );
+        Heltec.display->drawString(0, 32, "Sats");
+        Heltec.display->drawString(48, 32, String(gps.satellites.value()) );
+        Heltec.display->drawString(0, 48, "Msgs");
+        Heltec.display->drawString(48, 48, String(lora_msg_counter) );
+        Heltec.display->display();
     }
 
     // Execute the LMIC scheduler
